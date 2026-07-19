@@ -191,14 +191,25 @@ export default function App() {
       : undercoverNamesInput.filter(name => name.trim() !== '');
 
     const numPlayers = names.length;
-    const undercoverIdx = Math.floor(Math.random() * numPlayers);
+    const roles: ('CIVIL' | 'UNDERCOVER')[] = Array(numPlayers).fill('CIVIL');
+    const tempUndercoverIdx = Math.floor(Math.random() * numPlayers);
+    roles[tempUndercoverIdx] = 'UNDERCOVER';
+
+    // Fisher-Yates shuffle to guarantee complete randomness of positions
+    for (let i = roles.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const temp = roles[i];
+      roles[i] = roles[j];
+      roles[j] = temp;
+    }
 
     const playersList: UndercoverPlayer[] = names.map((name, idx) => {
-      const isUndercover = idx === undercoverIdx;
+      const role = roles[idx];
+      const isUndercover = role === 'UNDERCOVER';
       return {
         id: String(idx + 1),
         name,
-        role: isUndercover ? 'UNDERCOVER' : 'CIVIL',
+        role,
         word: isUndercover ? randomDuo.undercover : randomDuo.civil,
         eliminated: false
       };
