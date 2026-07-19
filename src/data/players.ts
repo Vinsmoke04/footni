@@ -115,7 +115,7 @@ export const PLAYERS: Player[] = [
     isFamous: true,
     career: [
       { club: "UD Las Palmas", years: "2019 - 2020", flag: "🇪🇸" },
-      { club: "FC Barcelone", years: "2020 - Présent", flag: "🇪🇸" }
+      { club: "FC Barcelona", years: "2020 - Présent", flag: "🇪🇸" }
     ]
   },
   {
@@ -136,7 +136,7 @@ export const PLAYERS: Player[] = [
       { club: "FC Bâle", years: "2012 - 2014", flag: "🇨🇭" },
       { club: "Chelsea FC", years: "2014 - 2015", flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿" },
       { club: "Fiorentina (Prêt)", years: "2015", flag: "🇮🇹" },
-      { club: "AS Rome", years: "2015 - 2017", flag: "🇮🇹" },
+      { club: "AS Roma", years: "2015 - 2017", flag: "🇮🇹" },
       { club: "Liverpool FC", years: "2017 - Présent", flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿" }
     ]
   },
@@ -277,7 +277,7 @@ export const PLAYERS: Player[] = [
       { club: "Lech Poznań", years: "2008 - 2010", flag: "🇵🇱" },
       { club: "Borussia Dortmund", years: "2010 - 2014", flag: "🇩🇪" },
       { club: "Bayern Munich", years: "2014 - 2022", flag: "🇩🇪" },
-      { club: "FC Barcelone", years: "2022 - Présent", flag: "🇪🇸" }
+      { club: "FC Barcelona", years: "2022 - Présent", flag: "🇪🇸" }
     ]
   },
   {
@@ -296,7 +296,7 @@ export const PLAYERS: Player[] = [
     career: [
       { club: "Real Sociedad", years: "2009 - 2014", flag: "🇪🇸" },
       { club: "Atlético Madrid", years: "2014 - 2019", flag: "🇪🇸" },
-      { club: "FC Barcelone", years: "2019 - 2021", flag: "🇪🇸" },
+      { club: "FC Barcelona", years: "2019 - 2021", flag: "🇪🇸" },
       { club: "Atlético Madrid", years: "2021 - Présent", flag: "🇪🇸" }
     ]
   },
@@ -335,7 +335,7 @@ export const PLAYERS: Player[] = [
     isFamous: true,
     career: [
       { club: "Corinthians", years: "2011 - 2012", flag: "🇧🇷" },
-      { club: "AS Rome", years: "2012 - 2013", flag: "🇮🇹" },
+      { club: "AS Roma", years: "2012 - 2013", flag: "🇮🇹" },
       { club: "Paris Saint-Germain", years: "2013 - Présent", flag: "🇫🇷" }
     ]
   },
@@ -355,7 +355,7 @@ export const PLAYERS: Player[] = [
     career: [
       { club: "Stade Rennais", years: "2015 - 2016", flag: "🇫🇷" },
       { club: "Borussia Dortmund", years: "2016 - 2017", flag: "🇩🇪" },
-      { club: "FC Barcelone", years: "2017 - 2023", flag: "🇪🇸" },
+      { club: "FC Barcelona", years: "2017 - 2023", flag: "🇪🇸" },
       { club: "Paris Saint-Germain", years: "2023 - Présent", flag: "🇫🇷" }
     ]
   },
@@ -431,7 +431,7 @@ export const PLAYERS: Player[] = [
       { club: "VfL Wolfsburg", years: "2017 - 2019", flag: "🇩🇪" },
       { club: "Charleroi (Prêt)", years: "2018 - 2019", flag: "🇧🇪" },
       { club: "Lille OSC", years: "2019 - 2020", flag: "🇫🇷" },
-      { club: "SSC Naples", years: "2020 - 2024", flag: "🇮🇹" },
+      { club: "SSC Napoli", years: "2020 - 2024", flag: "🇮🇹" },
       { club: "Galatasaray (Prêt)", years: "2024 - Présent", flag: "🇹🇷" }
     ]
   },
@@ -529,7 +529,7 @@ export const PLAYERS: Player[] = [
     height: 1.70,
     isFamous: true,
     career: [
-      { club: "FC Barcelone", years: "2004 - 2021", flag: "🇪🇸" },
+      { club: "FC Barcelona", years: "2004 - 2021", flag: "🇪🇸" },
       { club: "Paris Saint-Germain", years: "2021 - 2023", flag: "🇫🇷" },
       { club: "Inter Miami CF", years: "2023 - Présent", flag: "🇺🇸" }
     ]
@@ -749,7 +749,7 @@ export const PLAYERS: Player[] = [
     isFamous: true,
     career: [
       { club: "Internacional", years: "2013 - 2016", flag: "🇧🇷" },
-      { club: "AS Rome", years: "2016 - 2018", flag: "🇮🇹" },
+      { club: "AS Roma", years: "2016 - 2018", flag: "🇮🇹" },
       { club: "Liverpool FC", years: "2018 - Présent", flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿" }
     ]
   },
@@ -1094,7 +1094,7 @@ export const PLAYERS: Player[] = [
     isFamous: false,
     career: [
       { club: "VfB Stuttgart", years: "2011 - 2015", flag: "🇩🇪" },
-      { club: "AS Rome", years: "2015 - 2017", flag: "🇮🇹" },
+      { club: "AS Roma", years: "2015 - 2017", flag: "🇮🇹" },
       { club: "Chelsea FC", years: "2017 - 2022", flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿" },
       { club: "Real Madrid", years: "2022 - Présent", flag: "🇪🇸" }
     ]
@@ -1133,7 +1133,7 @@ export const PLAYERS: Player[] = [
     career: [
       { club: "Willem II", years: "2015", flag: "🇳🇱" },
       { club: "Ajax Amsterdam", years: "2015 - 2019", flag: "🇳🇱" },
-      { club: "FC Barcelone", years: "2019 - Présent", flag: "🇪🇸" }
+      { club: "FC Barcelona", years: "2019 - Présent", flag: "🇪🇸" }
     ]
   },
   {
@@ -1151,7 +1151,7 @@ export const PLAYERS: Player[] = [
     isFamous: true,
     career: [
       { club: "FC Barcelone B", years: "2020 - 2021", flag: "🇪🇸" },
-      { club: "FC Barcelone", years: "2021 - Présent", flag: "🇪🇸" }
+      { club: "FC Barcelona", years: "2021 - Présent", flag: "🇪🇸" }
     ]
   },
   {
@@ -1169,7 +1169,7 @@ export const PLAYERS: Player[] = [
     isFamous: true,
     career: [
       { club: "FC Barcelone Academy", years: "2014 - 2023", flag: "🇪🇸" },
-      { club: "FC Barcelone", years: "2023 - Présent", flag: "🇪🇸" }
+      { club: "FC Barcelona", years: "2023 - Présent", flag: "🇪🇸" }
     ]
   },
   {
@@ -1189,7 +1189,7 @@ export const PLAYERS: Player[] = [
       { club: "Rentistas", years: "2016 - 2017", flag: "🇺🇾" },
       { club: "Boston River", years: "2017 - 2018", flag: "🇺🇾" },
       { club: "FC Barcelone B", years: "2018 - 2020", flag: "🇪🇸" },
-      { club: "FC Barcelone", years: "2020 - Présent", flag: "🇪🇸" }
+      { club: "FC Barcelona", years: "2020 - Présent", flag: "🇪🇸" }
     ]
   },
   {
@@ -1207,7 +1207,7 @@ export const PLAYERS: Player[] = [
     isFamous: true,
     career: [
       { club: "Borussia Mönchengladbach", years: "2009 - 2014", flag: "🇩🇪" },
-      { club: "FC Barcelone", years: "2014 - Présent", flag: "🇪🇸" }
+      { club: "FC Barcelona", years: "2014 - Présent", flag: "🇪🇸" }
     ]
   },
   {
@@ -1329,7 +1329,7 @@ export const PLAYERS: Player[] = [
       { club: "FC Midtjylland", years: "2018 - 2020", flag: "🇩🇰" },
       { club: "SK Dnipro-1", years: "2020 - 2023", flag: "🇺🇦" },
       { club: "Girona FC", years: "2023 - 2024", flag: "🇪🇸" },
-      { club: "AS Rome", years: "2024 - Présent", flag: "🇮🇹" }
+      { club: "AS Roma", years: "2024 - Présent", flag: "🇮🇹" }
     ]
   },
   {
@@ -1445,7 +1445,7 @@ export const PLAYERS: Player[] = [
       { club: "AS Saint-Étienne", years: "2011 - 2013", flag: "🇫🇷" },
       { club: "Borussia Dortmund", years: "2013 - 2018", flag: "🇩🇪" },
       { club: "Arsenal FC", years: "2018 - 2022", flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿" },
-      { club: "FC Barcelone", years: "2022", flag: "🇪🇸" },
+      { club: "FC Barcelona", years: "2022", flag: "🇪🇸" },
       { club: "Chelsea FC", years: "2022 - 2023", flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿" },
       { club: "Olympique de Marseille", years: "2023 - 2024", flag: "🇫🇷" },
       { club: "Al-Qadsiah FC", years: "2024 - Présent", flag: "🇸🇦" }
@@ -1704,7 +1704,7 @@ export const PLAYERS: Player[] = [
       { club: "Lokomotiv Moscou (Prêt)", years: "2019", flag: "🇷🇺" },
       { club: "Rubin Kazan", years: "2019 - 2022", flag: "🇷🇺" },
       { club: "Dinamo Batoumi", years: "2022", flag: "🇬🇪" },
-      { club: "SSC Naples", years: "2022 - Présent", flag: "🇮🇹" }
+      { club: "SSC Napoli", years: "2022 - Présent", flag: "🇮🇹" }
     ]
   },
   {
@@ -1724,7 +1724,7 @@ export const PLAYERS: Player[] = [
       { club: "Instituto de Córdoba", years: "2011 - 2012", flag: "🇦🇷" },
       { club: "US Palerme", years: "2012 - 2015", flag: "🇮🇹" },
       { club: "Juventus", years: "2015 - 2022", flag: "🇮🇹" },
-      { club: "AS Rome", years: "2022 - Présent", flag: "🇮🇹" }
+      { club: "AS Roma", years: "2022 - Présent", flag: "🇮🇹" }
     ]
   },
   {
@@ -1741,9 +1741,9 @@ export const PLAYERS: Player[] = [
     height: 1.86,
     isFamous: false,
     career: [
-      { club: "AS Rome", years: "2014 - 2015", flag: "🇮🇹" },
+      { club: "AS Roma", years: "2014 - 2015", flag: "🇮🇹" },
       { club: "Sassuolo Calcio", years: "2015 - 2017", flag: "🇮🇹" },
-      { club: "AS Rome", years: "2017 - Présent", flag: "🇮🇹" }
+      { club: "AS Roma", years: "2017 - Présent", flag: "🇮🇹" }
     ]
   },
   {
@@ -2024,7 +2024,7 @@ export const PLAYERS: Player[] = [
     isFamous: true,
     career: [
       { club: "Santos FC", years: "2009 - 2013", flag: "🇧🇷" },
-      { club: "FC Barcelone", years: "2013 - 2017", flag: "🇪🇸" },
+      { club: "FC Barcelona", years: "2013 - 2017", flag: "🇪🇸" },
       { club: "Paris Saint-Germain", years: "2017 - 2023", flag: "🇫🇷" },
       { club: "Al-Hilal SFC", years: "2023 - Présent", flag: "🇸🇦" }
     ]
@@ -2166,7 +2166,7 @@ export const PLAYERS: Player[] = [
     career: [
       { club: "FC Metz", years: "2010 - 2012", flag: "🇫🇷" },
       { club: "KRC Genk", years: "2012 - 2014", flag: "🇧🇪" },
-      { club: "SSC Naples", years: "2014 - 2022", flag: "🇮🇹" },
+      { club: "SSC Napoli", years: "2014 - 2022", flag: "🇮🇹" },
       { club: "Chelsea FC", years: "2022 - 2023", flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿" },
       { club: "Al-Hilal SFC", years: "2023 - Présent", flag: "🇸🇦" }
     ]
@@ -2290,7 +2290,7 @@ export const PLAYERS: Player[] = [
       { club: "FC Nuremberg", years: "2009 - 2011", flag: "🇩🇪" },
       { club: "Borussia Dortmund", years: "2011 - 2016", flag: "🇩🇪" },
       { club: "Manchester City", years: "2016 - 2023", flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿" },
-      { club: "FC Barcelone", years: "2023 - 2024", flag: "🇪🇸" },
+      { club: "FC Barcelona", years: "2023 - 2024", flag: "🇪🇸" },
       { club: "Manchester City", years: "2024 - Présent", flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿" }
     ]
   },

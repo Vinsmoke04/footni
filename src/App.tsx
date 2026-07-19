@@ -123,6 +123,26 @@ export default function App() {
     }
   };
 
+  // Dynamic runtime synchronization for player database consistency (self-healing data)
+  useEffect(() => {
+    PLAYERS.forEach(player => {
+      if (player.career && player.career.length > 0) {
+        const lastStep = player.career[player.career.length - 1];
+        
+        // Normalize names for comparison
+        const normalize = (c: string) => c.toLowerCase().replace(" fc", "").replace("cf ", "").replace(" cf", "").trim();
+        const rootClean = normalize(player.club);
+        const lastClean = normalize(lastStep.club);
+        
+        // If there's a mismatch, automatically heal the data in memory
+        if (rootClean !== lastClean && !rootClean.includes(lastClean) && !lastClean.includes(rootClean)) {
+          console.warn(`[Footni Database Sync] Auto-correcting root club for ${player.name}: "${player.club}" -> "${lastStep.club}"`);
+          player.club = lastStep.club;
+        }
+      }
+    });
+  }, []);
+
   // Load stats dynamically when mode or difficulty changes
   useEffect(() => {
     if (gameMode === null) return;
