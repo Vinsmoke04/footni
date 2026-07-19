@@ -14,6 +14,8 @@ import {
 import confetti from 'canvas-confetti';
 import { PLAYERS, type Player } from './data/players';
 import { QUIZ_QUESTIONS, type QuizQuestion } from './data/quiz';
+import { UNDERCOVER_DUOS } from './data/undercover';
+import type { UndercoverDuo } from './data/undercover';
 
 interface GuessResult {
   player: Player;
@@ -42,11 +44,28 @@ interface QuizHistoryItem {
   correct: boolean;
 }
 
+interface UndercoverPlayer {
+  id: string;
+  name: string;
+  role: 'CIVIL' | 'UNDERCOVER';
+  word: string;
+  eliminated: boolean;
+}
+
 export default function App() {
   // Game Modes & Difficulties
-  const [gameMode, setGameMode] = useState<'CLASSIC' | 'CAREER' | 'QUIZ' | null>(null);
+  const [gameMode, setGameMode] = useState<'CLASSIC' | 'CAREER' | 'QUIZ' | 'UNDERCOVER' | null>(null);
   const [difficulty, setDifficulty] = useState<'SIMPLE' | 'HARD' | null>(null);
   const [careerDifficulty, setCareerDifficulty] = useState<'SIMPLE' | 'HARD' | null>(null);
+
+  // Undercover Game States
+  const [undercoverPlayers, setUndercoverPlayers] = useState<UndercoverPlayer[]>([]);
+  const [undercoverNamesInput, setUndercoverNamesInput] = useState<string[]>(['', '', '', '']); // Default to 4 players
+  const [undercoverPhase, setUndercoverPhase] = useState<'CONFIG' | 'DISTRIBUTION' | 'GAMEPLAY' | 'VOTING' | 'REVEAL'>('CONFIG');
+  const [undercoverActiveIdx, setUndercoverActiveIdx] = useState(0);
+  const [undercoverWordRevealed, setUndercoverWordRevealed] = useState(false);
+  const [undercoverCurrentTurn, setUndercoverCurrentTurn] = useState(1);
+  const [undercoverSelectedDuo, setUndercoverSelectedDuo] = useState<UndercoverDuo | null>(null);
   
   // Game States (Classic & Career)
   const [mysteryPlayer, setMysteryPlayer] = useState<Player>(PLAYERS[0]);
@@ -88,7 +107,7 @@ export default function App() {
 
   // Helper to determine the storage key based on active mode & difficulty
   const getStatsKey = (
-    mode: 'CLASSIC' | 'CAREER' | 'QUIZ' | null,
+    mode: 'CLASSIC' | 'CAREER' | 'QUIZ' | 'UNDERCOVER' | null,
     classicDiff: 'SIMPLE' | 'HARD' | null,
     careerDiff: 'SIMPLE' | 'HARD' | null
   ) => {
@@ -97,8 +116,10 @@ export default function App() {
       return classicDiff === 'SIMPLE' ? 'footni_classic_simple_stats' : 'footni_classic_hard_stats';
     } else if (mode === 'CAREER') {
       return careerDiff === 'SIMPLE' ? 'footni_career_simple_stats' : 'footni_career_hard_stats';
-    } else {
+    } else if (mode === 'QUIZ') {
       return 'footni_quiz_stats';
+    } else {
+      return 'footni_undercover_stats';
     }
   };
 
@@ -107,6 +128,7 @@ export default function App() {
     if (gameMode === null) return;
     if (gameMode === 'CLASSIC' && difficulty === null) return;
     if (gameMode === 'CAREER' && careerDifficulty === null) return;
+    if (gameMode === 'UNDERCOVER') return;
 
     const statsKey = getStatsKey(gameMode, difficulty, careerDifficulty);
     const savedStats = localStorage.getItem(statsKey);
@@ -158,10 +180,42 @@ export default function App() {
     setHighlightedIndex(-1);
   }, [searchQuery, guesses, careerGuesses, gameMode]);
 
+  const startNewUndercoverGame = (samePlayers: boolean = false) => {
+    // Pick a random duo
+    const randomDuo = UNDERCOVER_DUOS[Math.floor(Math.random() * UNDERCOVER_DUOS.length)];
+    setUndercoverSelectedDuo(randomDuo);
+
+    // Pick one random player to be the Undercover
+    const names = samePlayers 
+      ? undercoverPlayers.map(p => p.name) 
+      : undercoverNamesInput.filter(name => name.trim() !== '');
+
+    const numPlayers = names.length;
+    const undercoverIdx = Math.floor(Math.random() * numPlayers);
+
+    const playersList: UndercoverPlayer[] = names.map((name, idx) => {
+      const isUndercover = idx === undercoverIdx;
+      return {
+        id: String(idx + 1),
+        name,
+        role: isUndercover ? 'UNDERCOVER' : 'CIVIL',
+        word: isUndercover ? randomDuo.undercover : randomDuo.civil,
+        eliminated: false
+      };
+    });
+
+    setUndercoverPlayers(playersList);
+    setUndercoverActiveIdx(0);
+    setUndercoverWordRevealed(false);
+    setUndercoverCurrentTurn(1);
+    setUndercoverPhase('DISTRIBUTION');
+    setGameStatus('PLAYING');
+  };
+
   const startNewGame = (
     resetStats: boolean = false, 
     chosenDifficulty: 'SIMPLE' | 'HARD' = difficulty || 'SIMPLE',
-    chosenMode: 'CLASSIC' | 'CAREER' | 'QUIZ' = gameMode || 'CLASSIC',
+    chosenMode: 'CLASSIC' | 'CAREER' | 'QUIZ' = (gameMode === 'UNDERCOVER' ? null : gameMode) || 'CLASSIC',
     chosenCareerDifficulty: 'SIMPLE' | 'HARD' = careerDifficulty || 'SIMPLE'
   ) => {
     setGameMode(chosenMode);
@@ -621,6 +675,24 @@ export default function App() {
               </div>
               <span className="text-xl group-hover:translate-x-1.5 transition duration-200">➔</span>
             </button>
+
+            <button
+              onClick={() => {
+                setGameMode('UNDERCOVER');
+                setUndercoverPhase('CONFIG');
+                setUndercoverPlayers([]);
+                setUndercoverNamesInput(['', '', '', '']);
+              }}
+              className="w-full py-4 px-6 bg-rose-600 hover:bg-rose-500 text-white font-extrabold rounded-2xl shadow-md transition duration-200 text-left flex items-center justify-between group active:scale-[0.98]"
+            >
+              <div>
+                <span className="block text-base font-black">Football Undercover 🕵️‍♂️</span>
+                <span className="block text-[11px] text-rose-100 font-semibold mt-0.5">
+                  Démasquez l'intrus (Undercover) lors d'une partie locale en groupe !
+                </span>
+              </div>
+              <span className="text-xl group-hover:translate-x-1.5 transition duration-200">➔</span>
+            </button>
           </div>
 
           <div className="flex justify-center gap-4 mt-8">
@@ -764,12 +836,15 @@ export default function App() {
               <span className={
                 gameMode === 'CLASSIC' ? 'text-emerald-600 font-extrabold' : 
                 gameMode === 'CAREER' ? 'text-purple-600 font-extrabold' : 
+                gameMode === 'UNDERCOVER' ? 'text-rose-600 font-extrabold' :
                 'text-slate-700 font-extrabold'
               }>
                 {gameMode === 'CLASSIC' 
                   ? `Classique (${difficulty === 'SIMPLE' ? 'Simple 🟢' : 'Difficile 🔴'})` 
                   : gameMode === 'CAREER'
                   ? `Carrière (${careerDifficulty === 'SIMPLE' ? 'Normal 🟢' : 'Expert 🔴'})`
+                  : gameMode === 'UNDERCOVER'
+                  ? 'Undercover 🕵️‍♂️'
                   : 'Quiz Culture 🧠'
                 }
               </span>
@@ -777,15 +852,23 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-1 md:gap-2">
+            {gameMode !== 'UNDERCOVER' && (
+              <button 
+                onClick={() => setShowStatsModal(true)} 
+                className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 hover:text-slate-800 transition duration-250"
+                title="Statistiques"
+              >
+                <Trophy className="w-6 h-6" />
+              </button>
+            )}
             <button 
-              onClick={() => setShowStatsModal(true)} 
-              className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 hover:text-slate-800 transition duration-250"
-              title="Statistiques"
-            >
-              <Trophy className="w-6 h-6" />
-            </button>
-            <button 
-              onClick={() => startNewGame(false)} 
+              onClick={() => {
+                if (gameMode === 'UNDERCOVER') {
+                  startNewUndercoverGame(true);
+                } else {
+                  startNewGame(false);
+                }
+              }} 
               className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 hover:text-slate-800 transition duration-250"
               title="Recommencer une partie"
             >
@@ -958,8 +1041,345 @@ export default function App() {
           </div>
         )}
 
+        {/* UNDERCOVER GAME SCREEN */}
+        {gameMode === 'UNDERCOVER' && (
+          <div className="w-full max-w-xl flex flex-col items-center">
+            {undercoverPhase === 'CONFIG' && (
+              <div className="w-full bg-white/90 p-6 md:p-8 rounded-3xl border border-slate-200 shadow-xl animate-fade-in relative z-10 text-slate-800">
+                <div className="text-center mb-6">
+                  <span className="text-5xl mb-4 block animate-bounce">🕵️‍♂️</span>
+                  <h2 className="text-3xl font-black bg-gradient-to-r from-rose-600 to-amber-500 bg-clip-text text-transparent">
+                    Football Undercover
+                  </h2>
+                  <p className="text-xs text-slate-500 uppercase tracking-widest font-extrabold mt-1">
+                    Multijoueur Local (Pass-and-Play)
+                  </p>
+                </div>
+
+                <div className="mb-6">
+                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                    Nombre de joueurs : <span className="text-rose-600 font-black">{undercoverNamesInput.length}</span>
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <button
+                      disabled={undercoverNamesInput.length <= 3}
+                      onClick={() => {
+                        if (undercoverNamesInput.length > 3) {
+                          setUndercoverNamesInput(prev => prev.slice(0, -1));
+                        }
+                      }}
+                      className="w-12 h-12 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center font-black text-xl transition shadow-sm border border-slate-200"
+                    >
+                      -
+                    </button>
+                    <div className="flex-1 text-center font-mono text-lg font-black text-slate-800 py-2.5 bg-slate-50 border border-slate-200 rounded-xl shadow-inner">
+                      {undercoverNamesInput.length} joueurs
+                    </div>
+                    <button
+                      disabled={undercoverNamesInput.length >= 10}
+                      onClick={() => {
+                        if (undercoverNamesInput.length < 10) {
+                          setUndercoverNamesInput(prev => [...prev, '']);
+                        }
+                      }}
+                      className="w-12 h-12 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center font-black text-xl transition shadow-sm border border-slate-200"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-3 mb-6 max-h-[30vh] overflow-y-auto pr-1">
+                  <span className="block text-xs uppercase tracking-widest text-slate-400 font-extrabold px-1">
+                    Prénoms des participants :
+                  </span>
+                  {undercoverNamesInput.map((name, idx) => (
+                    <div key={idx} className="relative flex items-center">
+                      <span className="absolute left-3.5 text-xs font-mono font-bold text-slate-400">
+                        P{idx + 1}
+                      </span>
+                      <input
+                        type="text"
+                        value={name}
+                        placeholder={`Joueur ${idx + 1}`}
+                        onChange={(e) => {
+                          const updated = [...undercoverNamesInput];
+                          updated[idx] = e.target.value;
+                          setUndercoverNamesInput(updated);
+                        }}
+                        className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 text-slate-800 rounded-xl outline-none transition placeholder-slate-400 font-semibold text-sm"
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => {
+                    const emptyFields = undercoverNamesInput.some(name => name.trim() === '');
+                    if (emptyFields) {
+                      triggerFeedback("Veuillez remplir tous les prénoms !");
+                      return;
+                    }
+                    startNewUndercoverGame(false);
+                  }}
+                  className="w-full py-4 bg-gradient-to-r from-rose-600 to-amber-500 hover:from-rose-500 hover:to-amber-400 text-white font-black rounded-2xl shadow-md active:scale-95 transition flex items-center justify-center gap-2"
+                >
+                  <span>Lancer la partie 🚀</span>
+                </button>
+              </div>
+            )}
+
+            {undercoverPhase === 'DISTRIBUTION' && (
+              <div className="w-full bg-white/90 p-6 md:p-8 rounded-3xl border border-slate-200 shadow-xl animate-fade-in relative z-10 text-slate-800 text-center">
+                <div className="mb-6">
+                  <span className="text-xs uppercase tracking-widest text-rose-600 font-extrabold bg-rose-50 border border-rose-100 px-3 py-1 rounded-full">
+                    Phase de Distribution
+                  </span>
+                  <h3 className="text-2xl font-black text-slate-800 mt-4">
+                    C'est au tour de :
+                  </h3>
+                  <div className="mt-2 text-3xl font-black text-rose-600 animate-pulse">
+                    {undercoverPlayers[undercoverActiveIdx]?.name}
+                  </div>
+                </div>
+
+                <div className="my-8 flex justify-center">
+                  {!undercoverWordRevealed ? (
+                    <div className="w-64 h-40 bg-gradient-to-tr from-slate-800 to-slate-700 rounded-2xl border border-slate-600 flex flex-col items-center justify-center shadow-lg relative overflow-hidden group">
+                      <div className="absolute inset-0 bg-slate-900/10 hover:bg-transparent transition duration-200"></div>
+                      <span className="text-5xl mb-2">🤫</span>
+                      <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Mot Caché</span>
+                    </div>
+                  ) : (
+                    <div className="w-64 h-40 bg-gradient-to-tr from-rose-50 to-amber-50 rounded-2xl border-2 border-rose-300 flex flex-col items-center justify-center shadow-inner relative overflow-hidden animate-flip-in">
+                      <span className="text-[10px] text-rose-500 font-black uppercase tracking-widest mb-1.5">Votre joueur de foot secret :</span>
+                      <span className="text-2xl font-black text-slate-800 px-4 line-clamp-2">
+                        {undercoverPlayers[undercoverActiveIdx]?.word}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-4">
+                  {!undercoverWordRevealed ? (
+                    <button
+                      onClick={() => setUndercoverWordRevealed(true)}
+                      className="w-full py-3.5 bg-rose-600 hover:bg-rose-500 text-white font-extrabold rounded-2xl shadow-md transition duration-150 active:scale-95"
+                    >
+                      Appuie pour voir ton joueur 👀
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setUndercoverWordRevealed(false);
+                        if (undercoverActiveIdx + 1 < undercoverPlayers.length) {
+                          setUndercoverActiveIdx(prev => prev + 1);
+                        } else {
+                          setUndercoverPhase('GAMEPLAY');
+                          setUndercoverCurrentTurn(1);
+                        }
+                      }}
+                      className="w-full py-3.5 bg-slate-800 hover:bg-slate-700 text-white font-extrabold rounded-2xl shadow-md transition duration-150 active:scale-95"
+                    >
+                      Cacher et passer au suivant ➔
+                    </button>
+                  )}
+                </div>
+
+                <div className="mt-6 text-[10px] text-slate-400 font-bold tracking-wider uppercase">
+                  Joueur {undercoverActiveIdx + 1} / {undercoverPlayers.length}
+                </div>
+              </div>
+            )}
+
+            {undercoverPhase === 'GAMEPLAY' && (
+              <div className="w-full bg-white/90 p-6 md:p-8 rounded-3xl border border-slate-200 shadow-xl animate-fade-in relative z-10 text-slate-800">
+                <div className="text-center mb-6">
+                  <span className="text-xs uppercase tracking-widest text-emerald-600 font-extrabold bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-full">
+                    Phase de Débat
+                  </span>
+                  <h3 className="text-3xl font-black text-slate-800 mt-4">
+                    Tour {undercoverCurrentTurn} / 3
+                  </h3>
+                </div>
+
+                <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl mb-8 space-y-3.5">
+                  <h4 className="font-extrabold text-sm text-slate-700 flex items-center gap-1.5">
+                    <span>📢</span> Règles du Débat :
+                  </h4>
+                  <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                    À chaque tour, chaque joueur à voix haute doit donner **un seul mot** (ou un indice très court) pour décrire son joueur de foot secret.
+                  </p>
+                  <p className="text-xs text-rose-500 font-bold leading-relaxed">
+                    Attention : les civils décrivent le même joueur, tandis que l'Undercover en décrit un légèrement différent. Ne soyez ni trop vague ni trop précis !
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <button
+                    onClick={() => {
+                      if (undercoverCurrentTurn < 3) {
+                        setUndercoverCurrentTurn(prev => prev + 1);
+                      } else {
+                        setUndercoverPhase('VOTING');
+                      }
+                    }}
+                    className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-black rounded-2xl shadow-md transition duration-150 active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    <span>
+                      {undercoverCurrentTurn < 3 ? 'Passer au tour suivant ➔' : 'Passer au vote final 🗳️'}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {undercoverPhase === 'VOTING' && (
+              <div className="w-full bg-white/90 p-6 md:p-8 rounded-3xl border border-slate-200 shadow-xl animate-fade-in relative z-10 text-slate-800">
+                <div className="text-center mb-6">
+                  <span className="text-xs uppercase tracking-widest text-rose-600 font-extrabold bg-rose-50 border border-rose-100 px-3 py-1 rounded-full">
+                    Le Vote Final
+                  </span>
+                  <h3 className="text-2xl font-black text-slate-800 mt-4">
+                    Qui est l'Undercover ?
+                  </h3>
+                  <p className="text-xs text-slate-500 font-semibold mt-1">
+                    Éliminez le joueur suspecté par le groupe en cliquant sur son nom.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mb-6">
+                  {undercoverPlayers.map((player) => (
+                    <button
+                      key={player.id}
+                      onClick={() => {
+                        if (confirm(`Éliminer ${player.name} et voir le résultat ?`)) {
+                          const updated = undercoverPlayers.map(p => {
+                            if (p.id === player.id) {
+                              return { ...p, eliminated: true };
+                            }
+                            return p;
+                          });
+                          setUndercoverPlayers(updated);
+                          setUndercoverPhase('REVEAL');
+                          
+                          if (player.role === 'UNDERCOVER') {
+                            setGameStatus('WON');
+                            triggerConfetti();
+                          } else {
+                            setGameStatus('LOST');
+                          }
+                        }
+                      }}
+                      className="p-4 bg-slate-50 hover:bg-rose-50 hover:text-rose-600 border border-slate-200 hover:border-rose-300 font-extrabold rounded-2xl transition duration-200 flex flex-col items-center justify-center gap-1.5 shadow-sm text-slate-700"
+                    >
+                      <span className="text-xl">👤</span>
+                      <span className="text-sm line-clamp-1">{player.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {undercoverPhase === 'REVEAL' && (
+              <div className="w-full bg-white/90 p-6 md:p-8 rounded-3xl border border-slate-200 shadow-xl animate-fade-in relative z-10 text-slate-800 text-center">
+                <div className="mb-6">
+                  {gameStatus === 'WON' ? (
+                    <div>
+                      <span className="text-5xl block animate-bounce">🏆</span>
+                      <h3 className="text-3xl font-black text-emerald-600 mt-3">
+                        Victoire des Civils ! 🎉
+                      </h3>
+                      <p className="text-sm text-slate-500 mt-1 font-medium">
+                        Vous avez démasqué le bon Undercover !
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <span className="text-5xl block animate-pulse">🕵️‍♂️</span>
+                      <h3 className="text-3xl font-black text-rose-600 mt-3">
+                        L'Undercover a gagné ! 🤫
+                      </h3>
+                      <p className="text-sm text-slate-500 mt-1 font-medium">
+                        L'Undercover a réussi à vous tromper !
+                      </p>
+                    </div>
+                  )}
+                  {undercoverSelectedDuo && (
+                    <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600">
+                      Ce tour opposait <span className="text-emerald-600 font-extrabold">{undercoverSelectedDuo.civil}</span> (Civils) contre <span className="text-rose-600 font-extrabold">{undercoverSelectedDuo.undercover}</span> (Undercover)
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-4 mb-8 text-left">
+                  <h4 className="text-xs uppercase tracking-widest text-slate-400 font-extrabold px-1">
+                    Mots Secrets Révélés :
+                  </h4>
+                  
+                  {undercoverPlayers.map(p => {
+                    const isUndercover = p.role === 'UNDERCOVER';
+                    const wasCorrectlyEliminated = isUndercover && p.eliminated;
+                    
+                    let cardBg = "bg-slate-50 border-slate-200";
+                    let roleText = "Civil";
+                    let roleColor = "text-emerald-600 bg-emerald-50 border-emerald-200";
+                    
+                    if (isUndercover) {
+                      roleText = "Undercover";
+                      roleColor = "text-rose-600 bg-rose-50 border-rose-200";
+                      cardBg = wasCorrectlyEliminated 
+                        ? "bg-emerald-50/40 border-emerald-200 border-2"
+                        : "bg-rose-50/40 border-rose-200 border-2";
+                    } else if (p.eliminated) {
+                      cardBg = "bg-rose-50/10 border-slate-200 opacity-60";
+                    }
+
+                    return (
+                      <div key={p.id} className={`p-4 rounded-xl border flex items-center justify-between shadow-sm transition ${cardBg}`}>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xl">
+                            {isUndercover ? '🕵️‍♂️' : p.eliminated ? '🪦' : '👤'}
+                          </span>
+                          <div>
+                            <span className="font-extrabold text-sm block text-slate-800">
+                              {p.name} {p.eliminated && <span className="text-[10px] text-rose-500 font-bold uppercase ml-1">(Éliminé)</span>}
+                            </span>
+                            <span className="text-xs text-slate-500 font-medium">
+                              Mot : <strong className="text-slate-800 font-black">{p.word}</strong>
+                            </span>
+                          </div>
+                        </div>
+                        <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded border ${roleColor}`}>
+                          {roleText}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => setUndercoverPhase('CONFIG')}
+                    className="flex-1 py-3 px-4 bg-white hover:bg-slate-50 text-slate-700 font-bold rounded-xl transition duration-200 flex items-center justify-center gap-2 shadow border border-slate-200"
+                  >
+                    Nouveaux joueurs
+                  </button>
+                  <button
+                    onClick={() => startNewUndercoverGame(true)}
+                    className="flex-1 py-3 px-4 bg-gradient-to-r from-rose-600 to-amber-500 hover:from-rose-500 hover:to-amber-400 text-white font-bold rounded-xl transition duration-200 flex items-center justify-center gap-2 shadow-md"
+                  >
+                    <RotateCcw className="w-5 h-5 text-white" />
+                    Rejouer (mêmes joueurs)
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Regular Game Over Spotlights (Classic & Career only) */}
-        {gameMode !== 'QUIZ' && gameStatus !== 'PLAYING' && (
+        {gameMode !== 'QUIZ' && gameMode !== 'UNDERCOVER' && gameStatus !== 'PLAYING' && (
           <div className="w-full max-w-xl mb-6 p-6 rounded-2xl glass-panel border border-slate-200/80 animate-fade-in relative z-10 shadow-xl text-slate-800">
             <div className="text-center mb-6">
               {gameStatus === 'WON' ? (
@@ -1034,7 +1454,7 @@ export default function App() {
         )}
 
         {/* Regular Playing Inputs (Classic & Career only) */}
-        {gameMode !== 'QUIZ' && gameStatus === 'PLAYING' && (
+        {gameMode !== 'QUIZ' && gameMode !== 'UNDERCOVER' && gameStatus === 'PLAYING' && (
           <div className="w-full max-w-lg mb-6 relative z-30 animate-fade-in">
             <div className="flex items-center justify-between mb-2 px-1 text-xs text-slate-600 font-semibold">
               <span>
@@ -1395,7 +1815,7 @@ export default function App() {
 
             <div className="space-y-4 text-sm leading-relaxed text-slate-600">
               <p>
-                Footni propose **trois modes de jeu** pour tester votre culture footballistique :
+                Footni propose **quatre modes de jeu** pour tester votre culture footballistique :
               </p>
 
               <div className="border-l-4 border-emerald-500 pl-3 py-1 my-2 bg-emerald-50/20 rounded-r">
@@ -1415,6 +1835,11 @@ export default function App() {
               <div className="border-l-4 border-slate-700 pl-3 py-1 my-2 bg-slate-50 rounded-r">
                 <span className="font-bold text-slate-800 block">🧠 Mode Quiz</span>
                 Répondez à une série de **10 questions aléatoires** à choix multiples sur l'histoire du football (Ligue des Champions, Ballons d'Or, Coupe du Monde...).
+              </div>
+
+              <div className="border-l-4 border-rose-500 pl-3 py-1 my-2 bg-rose-50/20 rounded-r">
+                <span className="font-bold text-rose-700 block">🕵️‍♂️ Football Undercover (Pass-and-Play)</span>
+                Un jeu de rôle local de 3 à 10 joueurs. Tous reçoivent un même joueur de foot secret (les **Civils**), sauf un joueur (l'**Undercover**) qui reçoit un joueur comparable. Décrivez votre joueur à voix haute en 3 tours, puis débattez et votez pour éliminer l'intrus !
               </div>
             </div>
 
@@ -1486,7 +1911,7 @@ export default function App() {
             </div>
 
             {/* Quiz/Game Summary panel */}
-            {gameStatus !== 'PLAYING' && gameMode !== 'QUIZ' && (
+            {gameStatus !== 'PLAYING' && gameMode !== 'QUIZ' && gameMode !== 'UNDERCOVER' && (
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-150 mb-6 text-center">
                 <span className="text-xs text-slate-500 block font-semibold">Le joueur mystère était</span>
                 <span className="text-lg font-black text-emerald-600 block mt-1">
