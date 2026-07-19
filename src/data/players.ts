@@ -253,10 +253,10 @@ export const PLAYERS: Player[] = [
     isFamous: true,
     career: [
       { club: "AS Saint-Étienne", years: "2018 - 2019", flag: "🇫🇷" },
-      { club: "Arsenal FC", years: "2019 - Présent", flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿" },
       { club: "AS Saint-Étienne (Prêt)", years: "2019 - 2020", flag: "🇫🇷" },
       { club: "OGC Nice (Prêt)", years: "2021", flag: "🇫🇷" },
-      { club: "Olympique de Marseille (Prêt)", years: "2021 - 2022", flag: "🇫🇷" }
+      { club: "Olympique de Marseille (Prêt)", years: "2021 - 2022", flag: "🇫🇷" },
+      { club: "Arsenal FC", years: "2022 - Présent", flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿" }
     ]
   },
   {
@@ -462,8 +462,8 @@ export const PLAYERS: Player[] = [
     name: "Florian Wirtz",
     nationality: "Allemagne",
     flag: "🇩🇪",
-    league: "Bundesliga",
-    club: "Bayer Leverkusen",
+    league: "Premier League",
+    club: "Liverpool",
     age: 23,
     number: 10,
     category: "MIL",
@@ -472,7 +472,8 @@ export const PLAYERS: Player[] = [
     isFamous: true,
     career: [
       { club: "Bayer Leverkusen U19", years: "2020", flag: "🇩🇪" },
-      { club: "Bayer Leverkusen", years: "2020 - Présent", flag: "🇩🇪" }
+      { club: "Bayer Leverkusen", years: "2020 - 2025", flag: "🇩🇪" },
+      { club: "Liverpool FC", years: "2025 - Présent", flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿" }
     ]
   },
   {
@@ -1525,8 +1526,9 @@ export const PLAYERS: Player[] = [
     isFamous: false,
     career: [
       { club: "Atalanta Bergame", years: "2016 - 2017", flag: "🇮🇹" },
-      { club: "Inter Milan", years: "2017 - Présent", flag: "🇮🇹" },
-      { club: "Parme Calcio (Prêt)", years: "2018 - 2019", flag: "🇮🇹" }
+      { club: "Atalanta Bergame (Prêt)", years: "2017 - 2018", flag: "🇮🇹" },
+      { club: "Parme Calcio (Prêt)", years: "2018 - 2019", flag: "🇮🇹" },
+      { club: "Inter Milan", years: "2019 - Présent", flag: "🇮🇹" }
     ]
   },
   {
