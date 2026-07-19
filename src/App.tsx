@@ -1805,8 +1805,9 @@ export default function App() {
       </main>
 
       {/* FOOTER */}
-      <footer className="mt-8 text-center text-xs text-slate-400 font-semibold">
-        <p>Footni © 2026 — Inspiré de Wordle. Développé pour les amateurs de ballon rond.</p>
+      <footer className="mt-8 mb-4 text-center text-xs text-slate-400 font-semibold space-y-1">
+        <p>Footni © 2026 — Made with ❤️ by Skander Ouakad</p>
+        <p className="text-[10px] text-slate-400/80">Inspiré de Wordle. Développé pour les passionnés de football.</p>
       </footer>
 
       {/* HELP INSTRUCTIONS MODAL */}
