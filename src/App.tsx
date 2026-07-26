@@ -16,6 +16,8 @@ import { PLAYERS, type Player } from './data/players';
 import { QUIZ_QUESTIONS, type QuizQuestion } from './data/quiz';
 import { UNDERCOVER_DUOS } from './data/undercover';
 import type { UndercoverDuo } from './data/undercover';
+import { UNDERCOVER_CLASSIQUE_DUOS } from './data/undercoverClassique';
+import type { UndercoverClassiqueDuo, MultilingualWord } from './data/undercoverClassique';
 
 interface GuessResult {
   player: Player;
@@ -52,9 +54,17 @@ interface UndercoverPlayer {
   eliminated: boolean;
 }
 
+interface UndercoverClassiquePlayer {
+  id: string;
+  name: string;
+  role: 'CIVIL' | 'UNDERCOVER' | 'WHITE';
+  word: MultilingualWord | null;
+  eliminated: boolean;
+}
+
 export default function App() {
   // Game Modes & Difficulties
-  const [gameMode, setGameMode] = useState<'CLASSIC' | 'CAREER' | 'QUIZ' | 'UNDERCOVER' | null>(null);
+  const [gameMode, setGameMode] = useState<'CLASSIC' | 'CAREER' | 'QUIZ' | 'UNDERCOVER' | 'UNDERCOVER_CLASSIQUE' | null>(null);
   const [difficulty, setDifficulty] = useState<'SIMPLE' | 'HARD' | null>(null);
   const [careerDifficulty, setCareerDifficulty] = useState<'SIMPLE' | 'HARD' | null>(null);
 
@@ -66,6 +76,19 @@ export default function App() {
   const [undercoverWordRevealed, setUndercoverWordRevealed] = useState(false);
   const [undercoverCurrentTurn, setUndercoverCurrentTurn] = useState(1);
   const [undercoverSelectedDuo, setUndercoverSelectedDuo] = useState<UndercoverDuo | null>(null);
+  
+  // Undercover Classique States
+  const [classiquePlayers, setClassiquePlayers] = useState<UndercoverClassiquePlayer[]>([]);
+  const [classiqueNamesInput, setClassiqueNamesInput] = useState<string[]>(['', '', '', '']); // Default to 4 players
+  const [classiqueUndercoverCount, setClassiqueUndercoverCount] = useState(1);
+  const [classiqueWhiteCount, setClassiqueWhiteCount] = useState(0);
+  const [classiquePhase, setClassiquePhase] = useState<'CONFIG' | 'DISTRIBUTION' | 'GAMEPLAY' | 'VOTING' | 'ELIMINATION_REVEAL' | 'REVEAL'>('CONFIG');
+  const [classiqueActiveIdx, setClassiqueActiveIdx] = useState(0);
+  const [classiqueWordRevealed, setClassiqueWordRevealed] = useState(false);
+  const [classiqueCurrentRound, setClassiqueCurrentRound] = useState(1);
+  const [classiqueSelectedDuo, setClassiqueSelectedDuo] = useState<UndercoverClassiqueDuo | null>(null);
+  const [classiqueLastEliminated, setClassiqueLastEliminated] = useState<UndercoverClassiquePlayer | null>(null);
+  const [showSecretRolesToggle, setShowSecretRolesToggle] = useState(false);
   
   // Game States (Classic & Career)
   const [mysteryPlayer, setMysteryPlayer] = useState<Player>(PLAYERS[0]);
@@ -107,7 +130,7 @@ export default function App() {
 
   // Helper to determine the storage key based on active mode & difficulty
   const getStatsKey = (
-    mode: 'CLASSIC' | 'CAREER' | 'QUIZ' | 'UNDERCOVER' | null,
+    mode: 'CLASSIC' | 'CAREER' | 'QUIZ' | 'UNDERCOVER' | 'UNDERCOVER_CLASSIQUE' | null,
     classicDiff: 'SIMPLE' | 'HARD' | null,
     careerDiff: 'SIMPLE' | 'HARD' | null
   ) => {
@@ -118,6 +141,8 @@ export default function App() {
       return careerDiff === 'SIMPLE' ? 'footni_career_simple_stats' : 'footni_career_hard_stats';
     } else if (mode === 'QUIZ') {
       return 'footni_quiz_stats';
+    } else if (mode === 'UNDERCOVER_CLASSIQUE') {
+      return 'footni_undercover_classique_stats';
     } else {
       return 'footni_undercover_stats';
     }
@@ -148,7 +173,7 @@ export default function App() {
     if (gameMode === null) return;
     if (gameMode === 'CLASSIC' && difficulty === null) return;
     if (gameMode === 'CAREER' && careerDifficulty === null) return;
-    if (gameMode === 'UNDERCOVER') return;
+    if (gameMode === 'UNDERCOVER' || gameMode === 'UNDERCOVER_CLASSIQUE') return;
 
     const statsKey = getStatsKey(gameMode, difficulty, careerDifficulty);
     const savedStats = localStorage.getItem(statsKey);
@@ -243,10 +268,64 @@ export default function App() {
     setGameStatus('PLAYING');
   };
 
+  const startNewClassiqueUndercoverGame = (samePlayers: boolean = false) => {
+    // Pick a random duo
+    const randomDuo = UNDERCOVER_CLASSIQUE_DUOS[Math.floor(Math.random() * UNDERCOVER_CLASSIQUE_DUOS.length)];
+    setClassiqueSelectedDuo(randomDuo);
+
+    // Pick players
+    const names = samePlayers 
+      ? classiquePlayers.map(p => p.name) 
+      : classiqueNamesInput.filter(name => name.trim() !== '');
+
+    const numPlayers = names.length;
+    
+    // Safety check on count inputs
+    let uCount = classiqueUndercoverCount;
+    let wCount = classiqueWhiteCount;
+    if (uCount + wCount >= numPlayers) {
+      uCount = 1;
+      wCount = 0;
+    }
+
+    const roles: ('CIVIL' | 'UNDERCOVER' | 'WHITE')[] = [];
+    for (let i = 0; i < wCount; i++) roles.push('WHITE');
+    for (let i = 0; i < uCount; i++) roles.push('UNDERCOVER');
+    const civilsCount = numPlayers - uCount - wCount;
+    for (let i = 0; i < civilsCount; i++) roles.push('CIVIL');
+
+    // Fisher-Yates shuffle to guarantee complete randomness of positions
+    for (let i = roles.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const temp = roles[i];
+      roles[i] = roles[j];
+      roles[j] = temp;
+    }
+
+    const playersList: UndercoverClassiquePlayer[] = names.map((name, idx) => {
+      const role = roles[idx];
+      return {
+        id: String(idx + 1),
+        name,
+        role,
+        word: role === 'CIVIL' ? randomDuo.civil : (role === 'UNDERCOVER' ? randomDuo.undercover : null),
+        eliminated: false
+      };
+    });
+
+    setClassiquePlayers(playersList);
+    setClassiqueActiveIdx(0);
+    setClassiqueWordRevealed(false);
+    setClassiqueCurrentRound(1);
+    setClassiquePhase('DISTRIBUTION');
+    setClassiqueLastEliminated(null);
+    setGameStatus('PLAYING');
+  };
+
   const startNewGame = (
     resetStats: boolean = false, 
     chosenDifficulty: 'SIMPLE' | 'HARD' = difficulty || 'SIMPLE',
-    chosenMode: 'CLASSIC' | 'CAREER' | 'QUIZ' = (gameMode === 'UNDERCOVER' ? null : gameMode) || 'CLASSIC',
+    chosenMode: 'CLASSIC' | 'CAREER' | 'QUIZ' = (gameMode === 'UNDERCOVER' || gameMode === 'UNDERCOVER_CLASSIQUE' ? null : gameMode) || 'CLASSIC',
     chosenCareerDifficulty: 'SIMPLE' | 'HARD' = careerDifficulty || 'SIMPLE'
   ) => {
     setGameMode(chosenMode);
@@ -724,6 +803,27 @@ export default function App() {
               </div>
               <span className="text-xl group-hover:translate-x-1.5 transition duration-200">➔</span>
             </button>
+
+            <button
+              onClick={() => {
+                setGameMode('UNDERCOVER_CLASSIQUE');
+                setClassiquePhase('CONFIG');
+                setClassiquePlayers([]);
+                setClassiqueNamesInput(['', '', '', '']);
+                setClassiqueUndercoverCount(1);
+                setClassiqueWhiteCount(0);
+                setShowSecretRolesToggle(false);
+              }}
+              className="w-full py-4 px-6 bg-amber-500 hover:bg-amber-400 text-white font-extrabold rounded-2xl shadow-md transition duration-200 text-left flex items-center justify-between group active:scale-[0.98]"
+            >
+              <div>
+                <span className="block text-base font-black">Undercover Classique 🕵️</span>
+                <span className="block text-[11px] text-amber-50/90 font-semibold mt-0.5">
+                  Mots du quotidien (Français, Anglais, Arabe), avec civils et Mr. White !
+                </span>
+              </div>
+              <span className="text-xl group-hover:translate-x-1.5 transition duration-200">➔</span>
+            </button>
           </div>
 
           <div className="flex justify-center gap-4 mt-8">
@@ -868,6 +968,7 @@ export default function App() {
                 gameMode === 'CLASSIC' ? 'text-emerald-600 font-extrabold' : 
                 gameMode === 'CAREER' ? 'text-purple-600 font-extrabold' : 
                 gameMode === 'UNDERCOVER' ? 'text-rose-600 font-extrabold' :
+                gameMode === 'UNDERCOVER_CLASSIQUE' ? 'text-amber-600 font-extrabold' :
                 'text-slate-700 font-extrabold'
               }>
                 {gameMode === 'CLASSIC' 
@@ -876,6 +977,8 @@ export default function App() {
                   ? `Carrière (${careerDifficulty === 'SIMPLE' ? 'Normal 🟢' : 'Expert 🔴'})`
                   : gameMode === 'UNDERCOVER'
                   ? 'Undercover 🕵️‍♂️'
+                  : gameMode === 'UNDERCOVER_CLASSIQUE'
+                  ? 'Undercover Classique 🕵️'
                   : 'Quiz Culture 🧠'
                 }
               </span>
@@ -883,7 +986,7 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-1 md:gap-2">
-            {gameMode !== 'UNDERCOVER' && (
+            {gameMode !== 'UNDERCOVER' && gameMode !== 'UNDERCOVER_CLASSIQUE' && (
               <button 
                 onClick={() => setShowStatsModal(true)} 
                 className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 hover:text-slate-800 transition duration-250"
@@ -896,6 +999,8 @@ export default function App() {
               onClick={() => {
                 if (gameMode === 'UNDERCOVER') {
                   startNewUndercoverGame(true);
+                } else if (gameMode === 'UNDERCOVER_CLASSIQUE') {
+                  startNewClassiqueUndercoverGame(true);
                 } else {
                   startNewGame(false);
                 }
@@ -1409,8 +1514,524 @@ export default function App() {
           </div>
         )}
 
+        {/* UNDERCOVER CLASSIQUE GAME SCREEN */}
+        {gameMode === 'UNDERCOVER_CLASSIQUE' && (
+          <div className="w-full max-w-xl flex flex-col items-center">
+            {classiquePhase === 'CONFIG' && (
+              <div className="w-full bg-white/90 p-6 md:p-8 rounded-3xl border border-slate-200 shadow-xl animate-fade-in relative z-10 text-slate-800">
+                <div className="text-center mb-6">
+                  <span className="text-5xl mb-4 block animate-bounce">🕵️</span>
+                  <h2 className="text-3xl font-black bg-gradient-to-r from-amber-500 to-amber-600 bg-clip-text text-transparent">
+                    Undercover Classique
+                  </h2>
+                  <p className="text-xs text-slate-500 uppercase tracking-widest font-extrabold mt-1">
+                    Multijoueur Local (Pass-and-Play)
+                  </p>
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                    Nombre de joueurs : <span className="text-amber-600 font-black">{classiqueNamesInput.length}</span>
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <button
+                      disabled={classiqueNamesInput.length <= 3}
+                      onClick={() => {
+                        if (classiqueNamesInput.length > 3) {
+                          setClassiqueNamesInput(prev => prev.slice(0, -1));
+                          const nextLen = classiqueNamesInput.length - 1;
+                          if (classiqueUndercoverCount + classiqueWhiteCount >= nextLen - 1) {
+                            if (classiqueUndercoverCount > 1) {
+                              setClassiqueUndercoverCount(c => c - 1);
+                            } else if (classiqueWhiteCount > 0) {
+                              setClassiqueWhiteCount(c => c - 1);
+                            }
+                          }
+                        }
+                      }}
+                      className="w-12 h-12 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center font-black text-xl transition shadow-sm border border-slate-200"
+                    >
+                      -
+                    </button>
+                    <div className="flex-1 text-center font-mono text-lg font-black text-slate-800 py-2.5 bg-slate-50 border border-slate-200 rounded-xl shadow-inner">
+                      {classiqueNamesInput.length} joueurs
+                    </div>
+                    <button
+                      disabled={classiqueNamesInput.length >= 12}
+                      onClick={() => {
+                        if (classiqueNamesInput.length < 12) {
+                          setClassiqueNamesInput(prev => [...prev, '']);
+                        }
+                      }}
+                      className="w-12 h-12 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center font-black text-xl transition shadow-sm border border-slate-200"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div>
+                    <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">
+                      🕵️‍♂️ Undercovers
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        disabled={classiqueUndercoverCount <= 1}
+                        onClick={() => setClassiqueUndercoverCount(c => Math.max(1, c - 1))}
+                        className="w-10 h-10 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-50 flex items-center justify-center font-bold text-lg border border-slate-200"
+                      >
+                        -
+                      </button>
+                      <div className="flex-1 text-center font-bold text-slate-800 py-1.5 bg-slate-50 border border-slate-200 rounded-lg">
+                        {classiqueUndercoverCount}
+                      </div>
+                      <button
+                        disabled={classiqueUndercoverCount + classiqueWhiteCount >= classiqueNamesInput.length - 1}
+                        onClick={() => setClassiqueUndercoverCount(c => c + 1)}
+                        className="w-10 h-10 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-50 flex items-center justify-center font-bold text-lg border border-slate-200"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">
+                      ⬜ Mr. White
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        disabled={classiqueWhiteCount <= 0}
+                        onClick={() => setClassiqueWhiteCount(c => Math.max(0, c - 1))}
+                        className="w-10 h-10 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-50 flex items-center justify-center font-bold text-lg border border-slate-200"
+                      >
+                        -
+                      </button>
+                      <div className="flex-1 text-center font-bold text-slate-800 py-1.5 bg-slate-50 border border-slate-200 rounded-lg">
+                        {classiqueWhiteCount}
+                      </div>
+                      <button
+                        disabled={classiqueUndercoverCount + classiqueWhiteCount >= classiqueNamesInput.length - 1}
+                        onClick={() => setClassiqueWhiteCount(c => c + 1)}
+                        className="w-10 h-10 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-50 flex items-center justify-center font-bold text-lg border border-slate-200"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3 mb-6 max-h-[25vh] overflow-y-auto pr-1">
+                  <span className="block text-xs uppercase tracking-widest text-slate-400 font-extrabold px-1">
+                    Prénoms des participants :
+                  </span>
+                  {classiqueNamesInput.map((name, idx) => (
+                    <div key={idx} className="relative flex items-center">
+                      <span className="absolute left-3.5 text-xs font-mono font-bold text-slate-400">
+                        P{idx + 1}
+                      </span>
+                      <input
+                        type="text"
+                        value={name}
+                        placeholder={`Joueur ${idx + 1}`}
+                        onChange={(e) => {
+                          const updated = [...classiqueNamesInput];
+                          updated[idx] = e.target.value;
+                          setClassiqueNamesInput(updated);
+                        }}
+                        className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-slate-800 rounded-xl outline-none transition placeholder-slate-400 font-semibold text-sm"
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => {
+                    const emptyFields = classiqueNamesInput.some(name => name.trim() === '');
+                    if (emptyFields) {
+                      triggerFeedback("Veuillez remplir tous les prénoms !");
+                      return;
+                    }
+                    startNewClassiqueUndercoverGame(false);
+                  }}
+                  className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-550 text-white font-black rounded-2xl shadow-md active:scale-95 transition flex items-center justify-center gap-2"
+                >
+                  <span>Lancer la partie 🚀</span>
+                </button>
+              </div>
+            )}
+
+            {classiquePhase === 'DISTRIBUTION' && (
+              <div className="w-full bg-white/90 p-6 md:p-8 rounded-3xl border border-slate-200 shadow-xl animate-fade-in relative z-10 text-slate-800 text-center">
+                <div className="mb-6">
+                  <span className="text-xs uppercase tracking-widest text-amber-600 font-extrabold bg-amber-50 border border-amber-100 px-3 py-1 rounded-full">
+                    Phase de Distribution
+                  </span>
+                  <h3 className="text-2xl font-black text-slate-800 mt-4">
+                    C'est au tour de :
+                  </h3>
+                  <div className="mt-2 text-3xl font-black text-amber-600 animate-pulse">
+                    {classiquePlayers[classiqueActiveIdx]?.name}
+                  </div>
+                </div>
+
+                <div className="my-8 flex justify-center">
+                  {!classiqueWordRevealed ? (
+                    <div className="w-72 h-44 bg-gradient-to-tr from-slate-800 to-slate-700 rounded-2xl border border-slate-600 flex flex-col items-center justify-center shadow-lg relative overflow-hidden group">
+                      <div className="absolute inset-0 bg-slate-900/10 hover:bg-transparent transition duration-200"></div>
+                      <span className="text-5xl mb-2">🤫</span>
+                      <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Mot Caché</span>
+                    </div>
+                  ) : (
+                    <div className="w-72 h-44 bg-gradient-to-tr from-amber-50 to-amber-100/50 rounded-2xl border-2 border-amber-300 flex flex-col items-center justify-center shadow-inner relative overflow-hidden animate-flip-in p-4">
+                      {classiquePlayers[classiqueActiveIdx]?.role === 'WHITE' ? (
+                        <div className="text-center">
+                          <span className="text-4xl block animate-bounce mb-1">🕵️‍♂️</span>
+                          <span className="text-xs text-slate-500 font-extrabold uppercase tracking-wider block">Vous êtes</span>
+                          <span className="text-xl font-black text-amber-600">Mr. White ⬜</span>
+                          <span className="text-[10px] text-slate-400 font-medium block mt-1.5 leading-tight">
+                            Pas de mot secret. Devinez le mot des civils !
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="text-center w-full">
+                          <span className="text-[10px] text-amber-600 font-black uppercase tracking-widest block mb-2">Votre mot secret :</span>
+                          <div className="text-3xl font-black text-slate-850 truncate">
+                            {classiquePlayers[classiqueActiveIdx]?.word?.fr}
+                          </div>
+                          <div className="mt-3 text-xs text-slate-500 font-extrabold flex justify-center gap-4 border-t border-amber-200/50 pt-2 font-mono">
+                            <span className="flex items-center gap-1">🇬🇧 {classiquePlayers[classiqueActiveIdx]?.word?.en}</span>
+                            <span className="flex items-center gap-1">🇸🇦 {classiquePlayers[classiqueActiveIdx]?.word?.ar}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-4">
+                  {!classiqueWordRevealed ? (
+                    <button
+                      onClick={() => setClassiqueWordRevealed(true)}
+                      className="w-full py-3.5 bg-amber-500 hover:bg-amber-450 text-white font-extrabold rounded-2xl shadow-md transition duration-150 active:scale-95"
+                    >
+                      Appuie pour voir ton rôle 👀
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setClassiqueWordRevealed(false);
+                        if (classiqueActiveIdx + 1 < classiquePlayers.length) {
+                          setClassiqueActiveIdx(prev => prev + 1);
+                        } else {
+                          setClassiquePhase('GAMEPLAY');
+                          setClassiqueCurrentRound(1);
+                        }
+                      }}
+                      className="w-full py-3.5 bg-slate-800 hover:bg-slate-700 text-white font-extrabold rounded-2xl shadow-md transition duration-150 active:scale-95"
+                    >
+                      Cacher et passer au suivant ➔
+                    </button>
+                  )}
+                </div>
+
+                <div className="mt-6 text-[10px] text-slate-400 font-bold tracking-wider uppercase">
+                  Joueur {classiqueActiveIdx + 1} / {classiquePlayers.length}
+                </div>
+              </div>
+            )}
+
+            {classiquePhase === 'GAMEPLAY' && (
+              <div className="w-full bg-white/90 p-6 md:p-8 rounded-3xl border border-slate-200 shadow-xl animate-fade-in relative z-10 text-slate-800">
+                <div className="text-center mb-6">
+                  <span className="text-xs uppercase tracking-widest text-emerald-600 font-extrabold bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-full">
+                    Phase de Débat
+                  </span>
+                  <h3 className="text-3xl font-black text-slate-800 mt-4">
+                    Manche {classiqueCurrentRound}
+                  </h3>
+                </div>
+
+                <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl mb-8 space-y-3.5">
+                  <h4 className="font-extrabold text-sm text-slate-700 flex items-center gap-1.5">
+                    <span>📢</span> Déroulement de la manche :
+                  </h4>
+                  <p className="text-xs text-slate-650 leading-relaxed font-medium">
+                    À tour de rôle, chaque joueur encore en jeu doit donner **un seul mot** (ou indice très court) pour décrire son mot.
+                  </p>
+                  <p className="text-xs text-rose-500 font-bold leading-relaxed">
+                    Mr. White ne connaît pas le mot : il doit écouter attentivement et inventer un mot plausible pour se fondre dans la masse !
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <button
+                    onClick={() => {
+                      setClassiquePhase('VOTING');
+                    }}
+                    className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-450 hover:to-amber-550 text-white font-black rounded-2xl shadow-md transition duration-150 active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    <span>Passer au vote 🗳️</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {classiquePhase === 'VOTING' && (
+              <div className="w-full bg-white/90 p-6 md:p-8 rounded-3xl border border-slate-200 shadow-xl animate-fade-in relative z-10 text-slate-800">
+                <div className="text-center mb-6">
+                  <span className="text-xs uppercase tracking-widest text-rose-600 font-extrabold bg-rose-50 border border-rose-100 px-3 py-1 rounded-full">
+                    Le Vote de la Manche {classiqueCurrentRound}
+                  </span>
+                  <h3 className="text-2xl font-black text-slate-800 mt-4">
+                    Qui souhaitez-vous éliminer ?
+                  </h3>
+                  <p className="text-xs text-slate-500 font-semibold mt-1">
+                    Désignez le suspect en cliquant sur son nom.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mb-6">
+                  {classiquePlayers.filter(p => !p.eliminated).map((player) => (
+                    <button
+                      key={player.id}
+                      onClick={() => {
+                        if (confirm(`Éliminer ${player.name} ?`)) {
+                          const updated = classiquePlayers.map(p => {
+                            if (p.id === player.id) {
+                              return { ...p, eliminated: true };
+                            }
+                            return p;
+                          });
+                          setClassiquePlayers(updated);
+                          setClassiqueLastEliminated({ ...player, eliminated: true });
+                          setClassiquePhase('ELIMINATION_REVEAL');
+                        }
+                      }}
+                      className="p-4 bg-slate-50 hover:bg-rose-50 hover:text-rose-600 border border-slate-200 hover:border-rose-300 font-extrabold rounded-2xl transition duration-200 flex flex-col items-center justify-center gap-1.5 shadow-sm text-slate-700"
+                    >
+                      <span className="text-xl">👤</span>
+                      <span className="text-sm line-clamp-1">{player.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {classiquePhase === 'ELIMINATION_REVEAL' && classiqueLastEliminated && (
+              <div className="w-full bg-white/90 p-6 md:p-8 rounded-3xl border border-slate-200 shadow-xl animate-fade-in relative z-10 text-slate-800 text-center">
+                <span className="text-5xl block animate-pulse mb-4">📢</span>
+                <h3 className="text-2xl font-black text-slate-800">
+                  Sentence du Vote :
+                </h3>
+                <div className="mt-2 text-3xl font-black text-rose-600">
+                  {classiqueLastEliminated.name}
+                </div>
+                <p className="text-sm text-slate-500 font-semibold mt-1">
+                  a été éliminé(e) du groupe.
+                </p>
+
+                <div className="my-8 flex justify-center">
+                  {classiqueLastEliminated.role === 'CIVIL' && (
+                    <div className="px-6 py-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-2xl font-black text-xl flex items-center gap-2 shadow-sm animate-bounce">
+                      <span>🟢</span> Rôle : Civil
+                    </div>
+                  )}
+                  {classiqueLastEliminated.role === 'UNDERCOVER' && (
+                    <div className="px-6 py-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl font-black text-xl flex items-center gap-2 shadow-sm animate-bounce">
+                      <span>🔴</span> Rôle : Undercover
+                    </div>
+                  )}
+                  {classiqueLastEliminated.role === 'WHITE' && (
+                    <div className="px-6 py-4 bg-amber-50 border border-amber-200 text-amber-700 rounded-2xl font-black text-xl flex items-center gap-2 shadow-sm animate-bounce">
+                      <span>⬜</span> Rôle : Mr. White
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => {
+                    const activePlayers = classiquePlayers.filter(p => !p.eliminated);
+                    const activeCivils = activePlayers.filter(p => p.role === 'CIVIL');
+                    const activeUndercovers = activePlayers.filter(p => p.role === 'UNDERCOVER');
+                    const activeWhites = activePlayers.filter(p => p.role === 'WHITE');
+
+                    const intrudersCount = activeUndercovers.length + activeWhites.length;
+
+                    if (intrudersCount === 0) {
+                      setGameStatus('WON');
+                      setClassiquePhase('REVEAL');
+                      triggerConfetti();
+                    } else if (activeCivils.length <= intrudersCount) {
+                      setGameStatus('LOST');
+                      setClassiquePhase('REVEAL');
+                    } else {
+                      setClassiqueCurrentRound(prev => prev + 1);
+                      setClassiquePhase('GAMEPLAY');
+                    }
+                  }}
+                  className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-white font-black rounded-2xl shadow-md transition duration-150 active:scale-95"
+                >
+                  Continuer la partie ➔
+                </button>
+              </div>
+            )}
+
+            {classiquePhase === 'REVEAL' && (
+              <div className="w-full bg-white/90 p-6 md:p-8 rounded-3xl border border-slate-200 shadow-xl animate-fade-in relative z-10 text-slate-800 text-center">
+                <div className="mb-6">
+                  {gameStatus === 'WON' ? (
+                    <div>
+                      <span className="text-5xl block animate-bounce">🏆</span>
+                      <h3 className="text-3xl font-black text-emerald-600 mt-3">
+                        Victoire des Civils ! 🎉
+                      </h3>
+                      <p className="text-sm text-slate-500 mt-1 font-medium">
+                        Vous avez démasqué tous les intrus !
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <span className="text-5xl block animate-pulse">🤫</span>
+                      <h3 className="text-3xl font-black text-rose-600 mt-3">
+                        Les Intrus ont gagné ! 🕵️
+                      </h3>
+                      <p className="text-sm text-slate-500 mt-1 font-medium">
+                        L'Undercover et Mr. White ont éliminé les Civils !
+                      </p>
+                    </div>
+                  )}
+                  {classiqueSelectedDuo && (
+                    <div className="mt-5 p-4 bg-amber-50/50 border border-amber-100 rounded-2xl text-left space-y-2.5">
+                      <span className="text-xs uppercase font-extrabold tracking-wider text-amber-600 block">Duo de Mots en jeu :</span>
+                      <div className="text-xs text-slate-650 font-semibold space-y-1">
+                        <div>
+                          🟢 <span className="font-extrabold text-slate-800">Civils :</span> {classiqueSelectedDuo.civil.fr} (🇬🇧 {classiqueSelectedDuo.civil.en} • 🇸🇦 {classiqueSelectedDuo.civil.ar})
+                        </div>
+                        <div>
+                          🔴 <span className="font-extrabold text-slate-800">Undercovers :</span> {classiqueSelectedDuo.undercover.fr} (🇬🇧 {classiqueSelectedDuo.undercover.en} • 🇸🇦 {classiqueSelectedDuo.undercover.ar})
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-3 mb-8 text-left max-h-[30vh] overflow-y-auto pr-1">
+                  <h4 className="text-xs uppercase tracking-widest text-slate-400 font-extrabold px-1">
+                    Rôles secrets de la partie :
+                  </h4>
+                  
+                  {classiquePlayers.map(p => {
+                    let cardBg = "bg-slate-50 border-slate-200";
+                    let roleText = "Civil";
+                    let roleColor = "text-emerald-700 bg-emerald-50 border-emerald-250";
+                    
+                    if (p.role === 'UNDERCOVER') {
+                      roleText = "Undercover";
+                      roleColor = "text-rose-700 bg-rose-50 border-rose-250";
+                      cardBg = p.eliminated ? "bg-rose-50/30 border-rose-200" : "bg-rose-50/60 border-rose-300 border-2";
+                    } else if (p.role === 'WHITE') {
+                      roleText = "Mr. White";
+                      roleColor = "text-amber-700 bg-amber-50 border-amber-250";
+                      cardBg = p.eliminated ? "bg-amber-50/30 border-amber-200" : "bg-amber-50/60 border-amber-300 border-2";
+                    } else if (p.eliminated) {
+                      cardBg = "bg-slate-100/50 border-slate-200 opacity-60";
+                    }
+
+                    return (
+                      <div key={p.id} className={`p-4 rounded-xl border flex items-center justify-between shadow-sm transition ${cardBg}`}>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xl">
+                            {p.role === 'WHITE' ? '⬜' : p.role === 'UNDERCOVER' ? '🕵️‍♂️' : p.eliminated ? '🪦' : '👤'}
+                          </span>
+                          <div>
+                            <span className="font-extrabold text-sm block text-slate-800">
+                              {p.name} {p.eliminated && <span className="text-[10px] text-rose-500 font-bold uppercase ml-1">(Éliminé)</span>}
+                            </span>
+                            <span className="text-xs text-slate-500 font-medium">
+                              Mot : <strong className="text-slate-800 font-black">
+                                {p.role === 'WHITE' ? 'Mr. White (Aucun)' : p.word?.fr}
+                              </strong>
+                            </span>
+                          </div>
+                        </div>
+                        <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded border ${roleColor}`}>
+                          {roleText}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => setClassiquePhase('CONFIG')}
+                    className="flex-1 py-3 px-4 bg-white hover:bg-slate-50 text-slate-700 font-bold rounded-xl transition duration-200 flex items-center justify-center gap-2 shadow border border-slate-200"
+                  >
+                    Nouveaux joueurs
+                  </button>
+                  <button
+                    onClick={() => startNewClassiqueUndercoverGame(true)}
+                    className="flex-1 py-3 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-450 hover:to-amber-550 text-white font-bold rounded-xl transition duration-200 flex items-center justify-center gap-2 shadow-md"
+                  >
+                    <RotateCcw className="w-5 h-5 text-white" />
+                    Rejouer (mêmes joueurs)
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Spectator Secret Roles Helper */}
+            {classiquePhase !== 'CONFIG' && (
+              <div className="w-full mt-6 bg-slate-900/5 backdrop-blur-sm border border-slate-200/60 rounded-2xl p-4 shadow-sm relative z-20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">👀</span>
+                    <div className="text-left">
+                      <span className="text-xs font-black text-slate-700 block">Rôles Secrets (Spectateurs / Éliminés)</span>
+                      <span className="text-[9px] text-slate-400 font-extrabold uppercase">⚠️ Réservé aux joueurs éliminés !</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowSecretRolesToggle(!showSecretRolesToggle)}
+                    className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-extrabold rounded-xl text-xs transition active:scale-95 shadow"
+                  >
+                    {showSecretRolesToggle ? 'Masquer 👁️' : 'Afficher 👀'}
+                  </button>
+                </div>
+
+                {showSecretRolesToggle && (
+                  <div className="mt-4 border-t border-slate-200/60 pt-4 space-y-2 animate-fade-in max-h-[25vh] overflow-y-auto pr-1">
+                    {classiquePlayers.map(p => (
+                      <div key={p.id} className="flex justify-between items-center text-xs p-2.5 bg-white rounded-xl border border-slate-150 shadow-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold text-slate-800">{p.name}</span>
+                          {p.eliminated && <span className="text-[9px] bg-rose-50 text-rose-600 border border-rose-100 font-extrabold px-1.5 py-0.5 rounded uppercase">Éliminé</span>}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="font-semibold text-slate-500">
+                            {p.role === 'WHITE' ? 'Mr. White (Aucun)' : p.word?.fr}
+                          </span>
+                          <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded border ${
+                            p.role === 'CIVIL' ? 'text-emerald-600 bg-emerald-50 border-emerald-200' :
+                            p.role === 'UNDERCOVER' ? 'text-rose-600 bg-rose-50 border-rose-200' :
+                            'text-amber-600 bg-amber-50 border-amber-200'
+                          }`}>
+                            {p.role === 'CIVIL' ? 'Civil' : p.role === 'UNDERCOVER' ? 'Undercover' : 'White'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Regular Game Over Spotlights (Classic & Career only) */}
-        {gameMode !== 'QUIZ' && gameMode !== 'UNDERCOVER' && gameStatus !== 'PLAYING' && (
+        {gameMode !== 'QUIZ' && gameMode !== 'UNDERCOVER' && gameMode !== 'UNDERCOVER_CLASSIQUE' && gameStatus !== 'PLAYING' && (
           <div className="w-full max-w-xl mb-6 p-6 rounded-2xl glass-panel border border-slate-200/80 animate-fade-in relative z-10 shadow-xl text-slate-800">
             <div className="text-center mb-6">
               {gameStatus === 'WON' ? (
@@ -1485,7 +2106,7 @@ export default function App() {
         )}
 
         {/* Regular Playing Inputs (Classic & Career only) */}
-        {gameMode !== 'QUIZ' && gameMode !== 'UNDERCOVER' && gameStatus === 'PLAYING' && (
+        {gameMode !== 'QUIZ' && gameMode !== 'UNDERCOVER' && gameMode !== 'UNDERCOVER_CLASSIQUE' && gameStatus === 'PLAYING' && (
           <div className="w-full max-w-lg mb-6 relative z-30 animate-fade-in">
             <div className="flex items-center justify-between mb-2 px-1 text-xs text-slate-600 font-semibold">
               <span>
@@ -1943,7 +2564,7 @@ export default function App() {
             </div>
 
             {/* Quiz/Game Summary panel */}
-            {gameStatus !== 'PLAYING' && gameMode !== 'QUIZ' && gameMode !== 'UNDERCOVER' && (
+            {gameStatus !== 'PLAYING' && gameMode !== 'QUIZ' && gameMode !== 'UNDERCOVER' && gameMode !== 'UNDERCOVER_CLASSIQUE' && (
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-150 mb-6 text-center">
                 <span className="text-xs text-slate-500 block font-semibold">Le joueur mystère était</span>
                 <span className="text-lg font-black text-emerald-600 block mt-1">
